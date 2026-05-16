@@ -7,9 +7,26 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// ------------------- معالجة المسارات (SPA) -------------------
+// يجب أن تأتي قبل static middleware
+app.get('/join/:roomId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('*', (req, res) => {
+  // إذا لم يكن طلباً لملف ثابت (مثل .css, .js, .html) وليس socket.io
+  if (!req.path.startsWith('/socket.io') && !req.path.includes('.')) {
+    res.sendFile(path.join(__dirname, 'index.html'));
+  } else {
+    // دع express.static يتعامل مع بقية الملفات
+    return;
+  }
+});
+
+// خدمة الملفات الثابتة
 app.use(express.static(path.join(__dirname)));
 
-// ------------------- قاعدة الأسئلة -------------------
+// ------------------- باقي الخادم (نفس الكود السابق) -------------------
 const QUESTIONS = [
   { q: "ما نوع الفعل: قَالَ؟", opts: ["صحيح سالم","معتل أجوف","معتل ناقص","صحيح مهموز"], ans: 1 },
   { q: "ما نوع الفعل: رَمَى؟", opts: ["معتل مثال","معتل أجوف","معتل ناقص","صحيح مضعف"], ans: 2 },
@@ -90,7 +107,6 @@ function buildRound(players) {
       winner: p2 ? null : p1,
       status: p2 ? 'pending' : 'finished',
       board: Array(9).fill(null),
-      // لا يوجد currentTurn، يتم التعامل مع الحقوق بشكل منفصل
       question: getRandomQuestion(),
       p1Question: getRandomQuestion(),
       p2Question: getRandomQuestion(),
@@ -154,7 +170,6 @@ function qualifyPlayer(roomId, matchId, playerId) {
   return true;
 }
 
-// دالة معالجة وضع العلامة (بدون مفهوم "دور")
 function handleCellClick(roomId, matchId, cellIndex, playerId) {
   const room = rooms.get(roomId);
   if (!room || !room.tournament) return false;
@@ -172,11 +187,9 @@ function handleCellClick(roomId, matchId, cellIndex, playerId) {
   if (match.board[cellIndex] !== null) return false;
 
   match.board[cellIndex] = symbol;
-  // بعد وضع العلامة، نسلب الحق من هذا اللاعب حتى يجيب سؤالاً جديداً
   if (isP1) match.p1HasRight = false;
   else match.p2HasRight = false;
   
-  // نضيف حدث
   match.events.push(`${isP1 ? match.player1.name : match.player2.name} وضع ${symbol} في الخانة ${cellIndex+1}`);
 
   const win = checkWin(match.board);
@@ -198,7 +211,6 @@ function handleCellClick(roomId, matchId, cellIndex, playerId) {
   return true;
 }
 
-// دالة معالجة الإجابة: إذا صح، يمنح الحق للاعب الذي أجاب (ويمكن أن يلعب فوراً)
 function handleAnswer(roomId, matchId, playerId, correct) {
   const room = rooms.get(roomId);
   if (!room || !room.tournament) return false;
@@ -231,7 +243,6 @@ function handleAnswer(roomId, matchId, playerId, correct) {
   return true;
 }
 
-// ------------------- Socket.IO -------------------
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
