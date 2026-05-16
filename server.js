@@ -9,7 +9,7 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static(path.join(__dirname)));
 
-// ------------------- قاعدة الأسئلة (نحو عربي) -------------------
+// ------------------- قاعدة الأسئلة -------------------
 const QUESTIONS = [
   { q: "ما نوع الفعل: قَالَ؟", opts: ["صحيح سالم","معتل أجوف","معتل ناقص","صحيح مهموز"], ans: 1 },
   { q: "ما نوع الفعل: رَمَى؟", opts: ["معتل مثال","معتل أجوف","معتل ناقص","صحيح مضعف"], ans: 2 },
@@ -90,7 +90,7 @@ function buildRound(players) {
       winner: p2 ? null : p1,
       status: p2 ? 'pending' : 'finished',
       board: Array(9).fill(null),
-      currentTurn: p1.id,
+      // لا يوجد currentTurn، يتم التعامل مع الحقوق بشكل منفصل
       question: getRandomQuestion(),
       p1Question: getRandomQuestion(),
       p2Question: getRandomQuestion(),
@@ -106,7 +106,7 @@ function buildRound(players) {
   return matches;
 }
 
-const rooms = new Map(); // roomId -> { hostId, players, tournament }
+const rooms = new Map();
 
 function startTournament(roomId) {
   const room = rooms.get(roomId);
@@ -154,6 +154,7 @@ function qualifyPlayer(roomId, matchId, playerId) {
   return true;
 }
 
+// دالة معالجة وضع العلامة (بدون مفهوم "دور")
 function handleCellClick(roomId, matchId, cellIndex, playerId) {
   const room = rooms.get(roomId);
   if (!room || !room.tournament) return false;
@@ -168,12 +169,15 @@ function handleCellClick(roomId, matchId, cellIndex, playerId) {
   const symbol = isP1 ? 'X' : 'O';
   const hasRight = isP1 ? match.p1HasRight : match.p2HasRight;
   if (!hasRight) return false;
-  if (match.currentTurn !== playerId) return false;
   if (match.board[cellIndex] !== null) return false;
 
   match.board[cellIndex] = symbol;
+  // بعد وضع العلامة، نسلب الحق من هذا اللاعب حتى يجيب سؤالاً جديداً
   if (isP1) match.p1HasRight = false;
   else match.p2HasRight = false;
+  
+  // نضيف حدث
+  match.events.push(`${isP1 ? match.player1.name : match.player2.name} وضع ${symbol} في الخانة ${cellIndex+1}`);
 
   const win = checkWin(match.board);
   if (win) {
@@ -189,14 +193,12 @@ function handleCellClick(roomId, matchId, cellIndex, playerId) {
     match.question = getRandomQuestion();
     match.p1Question = getRandomQuestion();
     match.p2Question = getRandomQuestion();
-    match.currentTurn = match.player1.id;
     match.events.push('🤝 تعادل! إعادة المباراة');
-  } else {
-    match.currentTurn = isP1 ? (match.player2?.id || match.player1.id) : match.player1.id;
   }
   return true;
 }
 
+// دالة معالجة الإجابة: إذا صح، يمنح الحق للاعب الذي أجاب (ويمكن أن يلعب فوراً)
 function handleAnswer(roomId, matchId, playerId, correct) {
   const room = rooms.get(roomId);
   if (!room || !room.tournament) return false;
@@ -218,7 +220,7 @@ function handleAnswer(roomId, matchId, playerId, correct) {
       match.p2Correct++;
       match.p2Question = getRandomQuestion();
     }
-    match.events.push(`✅ ${isP1 ? match.player1.name : match.player2.name} أجاب صحيحاً`);
+    match.events.push(`✅ ${isP1 ? match.player1.name : match.player2.name} أجاب صحيحاً ← حصل على حق اللعب`);
   } else {
     if (isP1) match.p1HasRight = false;
     else match.p2HasRight = false;
