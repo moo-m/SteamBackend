@@ -9,7 +9,7 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static(path.join(__dirname)));
 
-// ------------------- قاعدة الأسئلة -------------------
+// ------------------- قاعدة الأسئلة (نحو عربي) -------------------
 const QUESTIONS = [
   { q: "ما نوع الفعل: قَالَ؟", opts: ["صحيح سالم","معتل أجوف","معتل ناقص","صحيح مهموز"], ans: 1 },
   { q: "ما نوع الفعل: رَمَى؟", opts: ["معتل مثال","معتل أجوف","معتل ناقص","صحيح مضعف"], ans: 2 },
@@ -106,7 +106,6 @@ function buildRound(players) {
   return matches;
 }
 
-// ------------------- هيكل الغرف -------------------
 const rooms = new Map(); // roomId -> { hostId, players, tournament }
 
 function startTournament(roomId) {
@@ -248,7 +247,6 @@ io.on('connection', (socket) => {
       return;
     }
     const room = rooms.get(roomId);
-    // تجنب الاسم المكرر
     if (room.players.find(p => p.name === player.name)) player.name += `_${randomId(3)}`;
     room.players.push(player);
     socket.join(roomId);
