@@ -1,191 +1,229 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>بطولة XO التعليمية | النحو العربي</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
-<script src="/socket.io/socket.io.js"></script>
-<style>
-:root {
-  --bg-deep: #020818;
-  --bg-mid: #060d24;
-  --bg-card: #0a1535;
-  --bg-card2: #0d1b40;
-  --neon-blue: #00d4ff;
-  --neon-purple: #9b59ff;
-  --neon-gold: #ffd700;
-  --neon-green: #00ff9d;
-  --neon-red: #ff3860;
-  --text-bright: #e8f4ff;
-  --text-dim: #6b8ab0;
-  --border-glow: rgba(0,212,255,0.3);
-  --gold-glow: rgba(255,215,0,0.4);
-  --purple-glow: rgba(155,89,255,0.3);
-  --font-main: 'Cairo', 'Tajawal', sans-serif;
-  --radius: 12px;
-  --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: var(--font-main);
-  background: var(--bg-deep);
-  color: var(--text-bright);
-  min-height: 100vh;
-  overflow-x: hidden;
-  direction: rtl;
-}
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background-image: radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.8) 0%, transparent 100%),
-                    radial-gradient(1px 1px at 80% 10%, rgba(0,212,255,0.6) 0%, transparent 100%),
-                    radial-gradient(1px 1px at 50% 80%, rgba(155,89,255,0.6) 0%, transparent 100%),
-                    radial-gradient(1px 1px at 10% 60%, rgba(255,255,255,0.5) 0%, transparent 100%),
-                    radial-gradient(1px 1px at 90% 50%, rgba(0,212,255,0.4) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 0;
-  animation: twinkle 4s ease-in-out infinite alternate;
-}
-@keyframes twinkle { from { opacity: 0.6; } to { opacity: 1; } }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-mid); }
-::-webkit-scrollbar-thumb { background: var(--neon-purple); border-radius: 3px; }
-#app { position: relative; z-index: 1; min-height: 100vh; }
-.screen { display: none; min-height: 100vh; animation: fadeIn 0.5s ease; }
-.screen.active { display: flex; flex-direction: column; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  background: rgba(6,13,36,0.9);
-  border-bottom: 1px solid var(--border-glow);
-  backdrop-filter: blur(20px);
-  position: sticky; top: 0; z-index: 100;
-}
-.logo { display: flex; align-items: center; gap: 12px; }
-.logo-icon { width: 44px; height: 44px; background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 20px var(--purple-glow); }
-.logo-text { font-size: 20px; font-weight: 900; }
-.logo-text span { color: var(--neon-gold); }
-.btn {
-  font-family: var(--font-main);
-  font-size: 15px;
-  font-weight: 700;
-  padding: 10px 22px;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all var(--transition);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.btn-primary { background: linear-gradient(135deg, var(--neon-purple), #6a3de8); color: white; box-shadow: 0 4px 20px var(--purple-glow); }
-.btn-gold { background: linear-gradient(135deg, var(--neon-gold), #e6a800); color: #000; box-shadow: 0 4px 20px var(--gold-glow); }
-.btn-cyan { background: linear-gradient(135deg, var(--neon-blue), #0099bb); color: #000; }
-.btn-outline { background: transparent; border: 1px solid var(--border-glow); color: var(--neon-blue); }
-.btn-sm { font-size: 13px; padding: 6px 14px; }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.card { background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: 16px; padding: 20px; backdrop-filter: blur(10px); }
-.input {
-  font-family: var(--font-main);
-  font-size: 16px;
-  padding: 12px 16px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--border-glow);
-  border-radius: var(--radius);
-  color: var(--text-bright);
-  width: 100%;
-}
-.input:focus { outline: none; border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0,212,255,0.2); }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.badge-blue { background: rgba(0,212,255,0.15); color: var(--neon-blue); border: 1px solid rgba(0,212,255,0.3); }
-.badge-gold { background: rgba(255,215,0,0.15); color: var(--neon-gold); border: 1px solid rgba(255,215,0,0.3); }
-.badge-green { background: rgba(0,255,157,0.15); color: var(--neon-green); border: 1px solid rgba(0,255,157,0.3); }
-.badge-red { background: rgba(255,56,96,0.15); color: var(--neon-red); }
-.section-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-glow); }
-.live-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--neon-red); }
-.live-dot::before { content: ''; width: 8px; height: 8px; background: var(--neon-red); border-radius: 50%; animation: blink 1s ease-in-out infinite; }
-@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
-.players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-.player-card { background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: var(--radius); padding: 14px; transition: all var(--transition); }
-.player-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; }
-.xo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 260px; margin: 0 auto 16px; }
-.xo-cell { aspect-ratio: 1; background: var(--bg-card2); border: 2px solid var(--border-glow); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; cursor: pointer; transition: all 0.2s; }
-.xo-cell.taken { cursor: default; }
-.xo-cell.disabled { cursor: not-allowed; opacity: 0.6; }
-.xo-cell.x-mark .mark-x { color: var(--neon-purple); text-shadow: 0 0 20px var(--neon-purple); }
-.xo-cell.o-mark .mark-o { color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue); }
-.xo-cell.winning { animation: winPulse 0.6s forwards; }
-@keyframes winPulse { 50% { background: rgba(255,215,0,0.4); box-shadow: 0 0 30px var(--gold-glow); } }
-.question-text { font-size: 17px; font-weight: 700; margin-bottom: 14px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-right: 3px solid var(--neon-gold); }
-.question-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.q-option { padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-glow); border-radius: 8px; cursor: pointer; font-family: var(--font-main); font-size: 14px; text-align: right; transition: all 0.2s; }
-.q-option.correct { border-color: var(--neon-green); background: rgba(0,255,157,0.15); color: var(--neon-green); }
-.q-option.wrong { border-color: var(--neon-red); background: rgba(255,56,96,0.15); color: var(--neon-red); }
-.events-feed { background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
-.events-list { height: 200px; overflow-y: auto; padding: 8px; display: flex; flex-direction: column-reverse; gap: 4px; }
-.event-item { padding: 6px 10px; border-radius: 6px; font-size: 13px; }
-.event-correct { background: rgba(0,255,157,0.08); color: var(--neon-green); }
-.event-wrong { background: rgba(255,56,96,0.08); color: var(--neon-red); }
-.event-move { background: rgba(155,89,255,0.08); color: var(--neon-purple); }
-.event-win { background: rgba(255,215,0,0.12); color: var(--neon-gold); font-weight: 700; }
-.bracket-container { overflow-x: auto; padding: 20px; background: var(--bg-card); border-radius: 16px; }
-.bracket-tree { display: flex; gap: 40px; align-items: center; min-width: max-content; padding: 20px; direction: ltr; }
-.bracket-round { display: flex; flex-direction: column; gap: 30px; align-items: center; }
-.round-label { font-size: 12px; font-weight: 700; color: var(--neon-gold); margin-bottom: 10px; }
-.bracket-match { background: var(--bg-card2); border: 1px solid var(--border-glow); border-radius: 10px; width: 180px; cursor: pointer; transition: all var(--transition); }
-.bracket-match.active { border-color: var(--neon-gold); box-shadow: 0 0 25px var(--gold-glow); }
-.bracket-player { padding: 10px 12px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); }
-.bracket-player.winner { background: rgba(0,255,157,0.1); color: var(--neon-green); }
-.turn-indicator { text-align: center; padding: 10px; border-radius: var(--radius); font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-.turn-indicator.your-turn { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.4); color: var(--neon-gold); animation: pulseGold 1.5s infinite; }
-@keyframes pulseGold { 0%,100%{box-shadow:0 0 10px var(--gold-glow);} 50%{box-shadow:0 0 25px var(--gold-glow);} }
-.timer-ring { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--neon-gold); font-size: 18px; font-weight: 900; color: var(--neon-gold); }
-.result-overlay { position: fixed; inset: 0; background: rgba(2,8,24,0.92); display: flex; align-items: center; justify-content: center; z-index: 200; }
-.result-card { background: var(--bg-card); border-radius: 24px; padding: 48px; text-align: center; max-width: 440px; border: 1px solid var(--neon-gold); box-shadow: 0 0 60px var(--gold-glow); }
-.toast-container { position: fixed; bottom: 24px; left: 24px; z-index: 9999; display: flex; flex-direction: column-reverse; gap: 10px; }
-.toast { padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 700; animation: toastIn 0.4s; border: 1px solid; }
-.toast-success { background: rgba(0,255,157,0.15); border-color: rgba(0,255,157,0.4); color: var(--neon-green); }
-.toast-error { background: rgba(255,56,96,0.15); border-color: rgba(255,56,96,0.4); color: var(--neon-red); }
-@keyframes toastIn { from { transform: translateX(-100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-.flex { display: flex; }
-.gap-8 { gap: 8px; }
-.gap-16 { gap: 16px; }
-.mb-16 { margin-bottom: 16px; }
-.text-gold { color: var(--neon-gold); }
-.text-dim { color: var(--text-dim); }
-.fw-900 { font-weight: 900; }
-@media (max-width: 900px) { .bracket-tree { flex-direction: column; } .question-options { grid-template-columns: 1fr; } }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>بطولة XO التعليمية | النحو العربي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Cairo', 'Tajawal', sans-serif;
+      background: #020818;
+      color: #e8f4ff;
+      min-height: 100vh;
+      direction: rtl;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.8) 0%, transparent 100%),
+                  radial-gradient(1px 1px at 80% 10%, rgba(0,212,255,0.6) 0%, transparent 100%),
+                  radial-gradient(1px 1px at 50% 80%, rgba(155,89,255,0.6) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    :root {
+      --neon-blue: #00d4ff;
+      --neon-purple: #9b59ff;
+      --neon-gold: #ffd700;
+      --neon-green: #00ff9d;
+      --neon-red: #ff3860;
+      --bg-card: #0a1535;
+      --bg-card2: #0d1b40;
+      --border-glow: rgba(0,212,255,0.3);
+      --gold-glow: rgba(255,215,0,0.4);
+      --purple-glow: rgba(155,89,255,0.3);
+      --radius: 12px;
+      --transition: 0.3s ease;
+    }
+    #app { position: relative; z-index: 1; min-height: 100vh; }
+    .screen { display: none; min-height: 100vh; animation: fadeIn 0.5s; }
+    .screen.active { display: flex; flex-direction: column; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: rgba(6,13,36,0.9);
+      border-bottom: 1px solid var(--border-glow);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px var(--purple-glow);
+    }
+    .logo-text { font-size: 20px; font-weight: 900; }
+    .logo-text span { color: var(--neon-gold); }
+    
+    /* buttons */
+    .btn {
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 10px 22px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--neon-purple), #6a3de8); color: white; box-shadow: 0 4px 20px var(--purple-glow); }
+    .btn-gold { background: linear-gradient(135deg, var(--neon-gold), #e6a800); color: #000; }
+    .btn-cyan { background: linear-gradient(135deg, var(--neon-blue), #0099bb); color: #000; }
+    .btn-outline { background: transparent; border: 1px solid var(--border-glow); color: var(--neon-blue); }
+    .btn-sm { font-size: 13px; padding: 6px 14px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    /* cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glow);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+    }
+    .input {
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-glow);
+      border-radius: var(--radius);
+      color: #e8f4ff;
+      width: 100%;
+    }
+    .input:focus { outline: none; border-color: var(--neon-blue); box-shadow: 0 0 20px rgba(0,212,255,0.2); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-blue { background: rgba(0,212,255,0.15); color: var(--neon-blue); border: 1px solid rgba(0,212,255,0.3); }
+    .badge-gold { background: rgba(255,215,0,0.15); color: var(--neon-gold); border: 1px solid rgba(255,215,0,0.3); }
+    .badge-green { background: rgba(0,255,157,0.15); color: var(--neon-green); }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6b8ab0;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-glow); }
+    .live-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--neon-red); }
+    .live-dot::before { content: ''; width: 8px; height: 8px; background: var(--neon-red); border-radius: 50%; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    
+    /* players grid */
+    .players-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .player-card { background: var(--bg-card); border: 1px solid var(--border-glow); border-radius: var(--radius); padding: 14px; transition: var(--transition); }
+    .player-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; }
+    
+    /* xo board */
+    .xo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 260px; margin: 0 auto 16px; }
+    .xo-cell {
+      aspect-ratio: 1;
+      background: var(--bg-card2);
+      border: 2px solid var(--border-glow);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .xo-cell.taken { cursor: default; }
+    .xo-cell.disabled { cursor: not-allowed; opacity: 0.6; }
+    .xo-cell.x-mark .mark-x { color: var(--neon-purple); text-shadow: 0 0 20px var(--neon-purple); }
+    .xo-cell.o-mark .mark-o { color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue); }
+    .xo-cell.winning { animation: winPulse 0.6s forwards; }
+    @keyframes winPulse { 50% { background: rgba(255,215,0,0.4); box-shadow: 0 0 30px var(--gold-glow); } }
+    
+    /* questions */
+    .question-text { font-size: 17px; font-weight: 700; margin-bottom: 14px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-right: 3px solid var(--neon-gold); }
+    .question-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .q-option { padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-glow); border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px; text-align: right; transition: all 0.2s; }
+    .q-option.correct { border-color: var(--neon-green); background: rgba(0,255,157,0.15); color: var(--neon-green); }
+    .q-option.wrong { border-color: var(--neon-red); background: rgba(255,56,96,0.15); color: var(--neon-red); }
+    
+    /* events feed */
+    .events-feed { background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
+    .events-list { height: 200px; overflow-y: auto; padding: 8px; display: flex; flex-direction: column-reverse; gap: 4px; }
+    .event-item { padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+    .event-correct { background: rgba(0,255,157,0.08); color: var(--neon-green); }
+    .event-wrong { background: rgba(255,56,96,0.08); color: var(--neon-red); }
+    .event-move { background: rgba(155,89,255,0.08); color: var(--neon-purple); }
+    .event-win { background: rgba(255,215,0,0.12); color: var(--neon-gold); font-weight: 700; }
+    
+    /* bracket */
+    .bracket-container { overflow-x: auto; padding: 20px; background: var(--bg-card); border-radius: 16px; }
+    .bracket-tree { display: flex; gap: 40px; align-items: center; min-width: max-content; padding: 20px; direction: ltr; }
+    .bracket-round { display: flex; flex-direction: column; gap: 30px; align-items: center; }
+    .round-label { font-size: 12px; font-weight: 700; color: var(--neon-gold); margin-bottom: 10px; }
+    .bracket-match { background: var(--bg-card2); border: 1px solid var(--border-glow); border-radius: 10px; width: 180px; cursor: pointer; transition: var(--transition); }
+    .bracket-match.active { border-color: var(--neon-gold); box-shadow: 0 0 25px var(--gold-glow); }
+    .bracket-player { padding: 10px 12px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .bracket-player.winner { background: rgba(0,255,157,0.1); color: var(--neon-green); }
+    
+    /* turn indicator */
+    .turn-indicator { text-align: center; padding: 10px; border-radius: var(--radius); font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .turn-indicator.your-turn { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.4); color: var(--neon-gold); animation: pulseGold 1.5s infinite; }
+    @keyframes pulseGold { 0%,100%{box-shadow:0 0 10px var(--gold-glow);} 50%{box-shadow:0 0 25px var(--gold-glow);} }
+    
+    .timer-ring { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--neon-gold); font-size: 18px; font-weight: 900; color: var(--neon-gold); }
+    .result-overlay { position: fixed; inset: 0; background: rgba(2,8,24,0.92); display: flex; align-items: center; justify-content: center; z-index: 200; }
+    .result-card { background: var(--bg-card); border-radius: 24px; padding: 48px; text-align: center; max-width: 440px; border: 1px solid var(--neon-gold); box-shadow: 0 0 60px var(--gold-glow); }
+    .toast-container { position: fixed; bottom: 24px; left: 24px; z-index: 9999; display: flex; flex-direction: column-reverse; gap: 10px; }
+    .toast { padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 700; animation: toastIn 0.4s; border: 1px solid; }
+    .toast-success { background: rgba(0,255,157,0.15); border-color: rgba(0,255,157,0.4); color: var(--neon-green); }
+    .toast-error { background: rgba(255,56,96,0.15); border-color: rgba(255,56,96,0.4); color: var(--neon-red); }
+    @keyframes toastIn { from { transform: translateX(-100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .flex { display: flex; }
+    .gap-8 { gap: 8px; }
+    .gap-16 { gap: 16px; }
+    .mb-16 { margin-bottom: 16px; }
+    .mt-16 { margin-top: 16px; }
+    .text-gold { color: var(--neon-gold); }
+    .text-dim { color: #6b8ab0; }
+    .fw-900 { font-weight: 900; }
+    .ta-center { text-align: center; }
+    @media (max-width: 900px) { .bracket-tree { flex-direction: column; } .question-options { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
 <div id="toast-container" class="toast-container"></div>
 <div id="app">
 
-<!-- الشاشة الرئيسية (الترحيب) -->
+<!-- شاشة الترحيب -->
 <div id="screen-landing" class="screen active">
   <div class="header">
     <div class="logo"><div class="logo-icon">⚔️</div><div class="logo-text">بطولة <span>XO</span> التعليمية</div></div>
@@ -194,8 +232,8 @@ body::before {
   <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;">
     <div style="text-align:center; max-width:700px;">
       <div class="badge badge-gold" style="margin-bottom:20px;">🏆 منصة بطولة تعليمية مباشرة</div>
-      <h1 style="font-size:clamp(36px,8vw,72px); font-weight:900; background:linear-gradient(135deg,var(--text-bright),var(--neon-blue),var(--neon-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">بطولة XO<br>النحو العربي</h1>
-      <p style="color:var(--text-dim); margin:24px 0 40px; font-size:18px;">تنافس في بطولات تيك تاك تو المباشرة عبر الإجابة على أسئلة النحو العربي</p>
+      <h1 style="font-size:clamp(36px,8vw,72px); font-weight:900; background:linear-gradient(135deg,#e8f4ff,var(--neon-blue),var(--neon-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">بطولة XO<br>النحو العربي</h1>
+      <p style="color:#6b8ab0; margin:24px 0 40px; font-size:18px;">تنافس في بطولات تيك تاك تو المباشرة عبر الإجابة على أسئلة النحو العربي</p>
       <div class="flex gap-16" style="justify-content:center; flex-wrap:wrap;">
         <button class="btn btn-gold" id="createTournamentBtn">🏟️ إنشاء بطولة</button>
         <button class="btn btn-primary" id="showJoinBtn">🎮 الانضمام للعبة</button>
@@ -204,7 +242,7 @@ body::before {
   </div>
 </div>
 
-<!-- شاشة الانضمام / إنشاء اسم -->
+<!-- شاشة الانضمام -->
 <div id="screen-join" class="screen">
   <div class="header">
     <div class="logo"><div class="logo-icon">⚔️</div><div class="logo-text">بطولة <span>XO</span> التعليمية</div></div>
@@ -214,7 +252,7 @@ body::before {
     <div class="card" style="max-width:420px; width:100%;">
       <h2 class="text-gold ta-center mb-16">🎮 انضم للبطولة</h2>
       <div class="mb-16"><div class="section-title">دورك</div>
-        <div class="flex gap-8"><button id="rolePlayerBtn" class="btn btn-outline" style="flex:1;">🎮 لاعب</button><button id="roleSpecBtn" class="btn btn-outline" style="flex:1;">👁️ متفرج</button></div>
+        <div class="flex gap-8"><button id="rolePlayerBtn" class="btn btn-primary" style="flex:1;">🎮 لاعب</button><button id="roleSpecBtn" class="btn btn-outline" style="flex:1;">👁️ متفرج</button></div>
       </div>
       <div class="mb-16"><div class="section-title">اسمك</div><input type="text" id="playerNameInput" class="input" placeholder="أدخل اسمك..."></div>
       <div class="mb-16"><div class="section-title">رمز الغرفة</div><input type="text" id="roomIdInput" class="input" placeholder="مثال: ABC123" style="text-transform:uppercase;"></div>
@@ -241,7 +279,7 @@ body::before {
   </div>
 </div>
 
-<!-- شاشة المباراة (لللاعبين) -->
+<!-- شاشة المباراة -->
 <div id="screen-match" class="screen">
   <div class="header"><div class="logo"><div class="logo-icon">⚔️</div><div class="logo-text">مباراة <span>XO</span></div></div><div class="header-right"><span class="live-dot"></span><button id="soundToggleBtn3" class="btn btn-outline btn-sm">🔊</button></div></div>
   <div id="spectatorBanner" style="display:none; background:rgba(0,212,255,0.1); text-align:center; padding:8px;">👁️ أنت تشاهد هذه المباراة كمتفرج</div>
@@ -266,12 +304,11 @@ body::before {
 let socket = null;
 let currentRoomId = null;
 let myPlayer = null;
-let myRole = 'player'; // 'player', 'spectator', 'host'
+let myRole = 'player';
 let currentTournament = null;
 let currentMatch = null;
-let mySymbol = null; // 'X' or 'O'
+let mySymbol = null;
 let answerLocked = false;
-let matchTimerInterval = null;
 
 // ------------------- المساعدات -------------------
 function toast(msg, type='info') {
@@ -285,7 +322,6 @@ function toast(msg, type='info') {
 function randomId(len=6) { return Math.random().toString(36).substring(2,2+len).toUpperCase(); }
 function launchConfetti(count=50) { for(let i=0;i<count;i++) { const c=document.createElement('div'); c.className='confetti-particle'; c.style.cssText=`left:${Math.random()*100}vw; background:hsl(${Math.random()*360},100%,50%); animation-duration:${1+Math.random()*2}s;`; document.body.appendChild(c); setTimeout(()=>c.remove(),3000); } }
 
-// ------------------- عرض الشاشات -------------------
 const App = {
   showScreen(name) {
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -297,12 +333,11 @@ const App = {
   showMatch() { this.showScreen('match'); }
 };
 
-// ------------------- الاتصال بالخادم -------------------
+// ------------------- الاتصال -------------------
 function connectSocket() {
   socket = io();
   socket.on('connect', () => console.log('Socket connected'));
   socket.on('room-update', (data) => {
-    console.log('room-update', data);
     currentTournament = data.tournament;
     renderLobbyPlayers(data.players);
     renderBracket();
@@ -342,7 +377,6 @@ function connectSocket() {
   socket.on('error', (msg) => toast(msg, 'error'));
 }
 
-// ------------------- إنشاء غرفة -------------------
 function createRoom() {
   const player = { id: randomId(8), name: 'المشرف', role: 'host' };
   myPlayer = player;
@@ -356,7 +390,6 @@ function createRoom() {
   });
 }
 
-// ------------------- الانضمام لغرفة -------------------
 function joinRoom() {
   const name = document.getElementById('playerNameInput').value.trim();
   let roomId = document.getElementById('roomIdInput').value.trim().toUpperCase();
@@ -377,24 +410,28 @@ function joinRoom() {
   });
 }
 
-// ------------------- عرض اللاعبين في اللوبي -------------------
 function renderLobbyPlayers(players) {
   const container = document.getElementById('lobbyPlayersGrid');
   const realPlayers = players.filter(p => p.role === 'player');
-  if(!realPlayers.length) {
-    container.innerHTML = '<div class="text-dim">⏳ انتظار انضمام لاعبين...</div>';
-    return;
-  }
+  if(!realPlayers.length) { container.innerHTML = '<div class="text-dim">⏳ انتظار انضمام لاعبين...</div>'; return; }
   container.innerHTML = realPlayers.map(p => `
     <div class="player-card">
       <div class="flex gap-8"><div class="player-avatar">${p.name[0]}</div><div><div>${p.name}</div><div class="badge badge-green">🎮 لاعب</div></div></div>
+      ${myRole === 'host' ? `<button class="qualify-btn-sm" style="margin-top:8px; background:rgba(255,215,0,0.2); border:none; padding:4px 8px; border-radius:8px; cursor:pointer;" onclick="qualifyPlayerFromLobby('${p.id}')">⚡ تأهيل يدوي</button>` : ''}
     </div>
   `).join('');
   const specCount = players.filter(p=>p.role==='spectator').length;
   document.getElementById('lobbySpectatorCount').innerText = `👁️ ${specCount}`;
 }
 
-// ------------------- شجرة البطولة -------------------
+function qualifyPlayerFromLobby(playerId) {
+  if(!currentTournament || !currentTournament.rounds.length) { toast('لا توجد بطولة نشطة', 'error'); return; }
+  const round = currentTournament.rounds[currentTournament.currentRound];
+  const match = round.matches.find(m => m.player1?.id === playerId || m.player2?.id === playerId);
+  if(!match) { toast('لا توجد مباراة لهذا اللاعب', 'error'); return; }
+  socket.emit('qualify-player', { roomId: currentRoomId, matchId: match.id, playerId });
+}
+
 function renderBracket() {
   const container = document.getElementById('bracketTree');
   const bracketSec = document.getElementById('bracketSection');
@@ -424,10 +461,9 @@ function renderBracket() {
 }
 
 function openMatchViewer(match) {
-  alert(`مباراة: ${match.player1?.name} ضد ${match.player2?.name}\nالحالة: ${match.status}`);
+  alert(`مباراة: ${match.player1?.name} ضد ${match.player2?.name}\nالحالة: ${match.status}\nالفائز: ${match.winner?.name || 'لم يحدد بعد'}`);
 }
 
-// ------------------- تحديث المباريات النشطة -------------------
 function updateActiveMatches() {
   const container = document.getElementById('activeMatchesList');
   if(!currentTournament || !currentTournament.rounds.length) { container.innerHTML = ''; return; }
@@ -437,11 +473,18 @@ function updateActiveMatches() {
   currentRound.matches.forEach(m => {
     const el = document.createElement('div'); el.className = 'card mb-8';
     el.innerHTML = `<div class="flex gap-8 justify-between"><span>${m.player1?.name||'—'} ضد ${m.player2?.name||'—'}</span><span class="badge ${m.status==='finished'?'badge-green':'badge-gold'}">${m.status==='finished'?'انتهت':'جارية'}</span></div>`;
+    if(myRole === 'host' && m.status !== 'finished') {
+      el.innerHTML += `<div class="flex gap-8 mt-8"><button class="qualify-btn-sm" onclick="qualifyPlayerFromMatch('${m.id}','${m.player1?.id}')">تأهيل ${m.player1?.name}</button><button class="qualify-btn-sm" onclick="qualifyPlayerFromMatch('${m.id}','${m.player2?.id}')">تأهيل ${m.player2?.name}</button></div>`;
+    }
     container.appendChild(el);
   });
 }
 
-// ------------------- التحقق مما إذا كان اللاعب لديه مباراة -------------------
+function qualifyPlayerFromMatch(matchId, playerId) {
+  if(!playerId) return;
+  socket.emit('qualify-player', { roomId: currentRoomId, matchId, playerId });
+}
+
 function checkMyMatch() {
   if(myRole !== 'player') return;
   if(!currentTournament || !currentTournament.rounds.length) return;
@@ -460,10 +503,8 @@ function checkMyMatch() {
   }
 }
 
-// ------------------- تحديث واجهة المباراة -------------------
 function updateMatchUI(match) {
   if (!match) return;
-  
   document.getElementById('matchVsLabel').innerText = `${match.player1?.name} ضد ${match.player2?.name}`;
   document.getElementById('matchRoundLabel').innerText = `الدور ${(currentTournament?.currentRound || 0) + 1}`;
   
@@ -582,7 +623,7 @@ function showResult(isWinner, isDraw, winnerName) {
 }
 document.getElementById('closeResultBtn').onclick = () => document.getElementById('resultOverlay').style.display = 'none';
 
-// ------------------- أزرار الواجهة -------------------
+// ------------------- ربط الأزرار -------------------
 document.getElementById('createTournamentBtn').onclick = () => { connectSocket(); createRoom(); };
 document.getElementById('showJoinBtn').onclick = () => App.showJoin();
 document.getElementById('joinRoomBtn').onclick = () => { if(!socket) connectSocket(); setTimeout(() => { if(socket && socket.connected) joinRoom(); else toast('جاري الاتصال... حاول مرة أخرى', 'error'); }, 500); };
