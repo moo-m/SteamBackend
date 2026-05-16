@@ -194,10 +194,9 @@
     .bracket-player { padding: 10px 12px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); }
     .bracket-player.winner { background: rgba(0,255,157,0.1); color: var(--neon-green); }
     
-    /* turn indicator */
-    .turn-indicator { text-align: center; padding: 10px; border-radius: var(--radius); font-size: 15px; font-weight: 700; margin-bottom: 12px; }
-    .turn-indicator.your-turn { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.4); color: var(--neon-gold); animation: pulseGold 1.5s infinite; }
-    @keyframes pulseGold { 0%,100%{box-shadow:0 0 10px var(--gold-glow);} 50%{box-shadow:0 0 25px var(--gold-glow);} }
+    /* turn indicator - modified to show "has right" only */
+    .status-indicator { text-align: center; padding: 10px; border-radius: var(--radius); font-size: 15px; font-weight: 700; margin-bottom: 12px; background: rgba(0,212,255,0.1); border: 1px solid var(--border-glow); }
+    .status-indicator.has-right { background: rgba(255,215,0,0.1); border-color: var(--neon-gold); color: var(--neon-gold); animation: pulseGold 1.5s infinite; }
     
     .timer-ring { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--neon-gold); font-size: 18px; font-weight: 900; color: var(--neon-gold); }
     .result-overlay { position: fixed; inset: 0; background: rgba(2,8,24,0.92); display: flex; align-items: center; justify-content: center; z-index: 200; }
@@ -223,7 +222,7 @@
 <div id="toast-container" class="toast-container"></div>
 <div id="app">
 
-<!-- شاشة الترحيب -->
+<!-- شاشة الترحيب (ستظهر فقط عند دخول بدون رابط) -->
 <div id="screen-landing" class="screen active">
   <div class="header">
     <div class="logo"><div class="logo-icon">⚔️</div><div class="logo-text">بطولة <span>XO</span> التعليمية</div></div>
@@ -242,21 +241,21 @@
   </div>
 </div>
 
-<!-- شاشة الانضمام -->
-<div id="screen-join" class="screen">
+<!-- شاشة الانضمام المباشر (تظهر عند فتح رابط /join/ROOM_ID) -->
+<div id="screen-direct-join" class="screen">
   <div class="header">
     <div class="logo"><div class="logo-icon">⚔️</div><div class="logo-text">بطولة <span>XO</span> التعليمية</div></div>
-    <div class="header-right"><button class="btn btn-outline btn-sm" onclick="App.showScreen('landing')">← رجوع</button></div>
+    <div class="header-right"><button class="btn btn-outline btn-sm" onclick="App.showLandingFromJoin()">← الرئيسية</button></div>
   </div>
   <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;">
     <div class="card" style="max-width:420px; width:100%;">
       <h2 class="text-gold ta-center mb-16">🎮 انضم للبطولة</h2>
       <div class="mb-16"><div class="section-title">دورك</div>
-        <div class="flex gap-8"><button id="rolePlayerBtn" class="btn btn-primary" style="flex:1;">🎮 لاعب</button><button id="roleSpecBtn" class="btn btn-outline" style="flex:1;">👁️ متفرج</button></div>
+        <div class="flex gap-8"><button id="directRolePlayerBtn" class="btn btn-primary" style="flex:1;">🎮 لاعب</button><button id="directRoleSpecBtn" class="btn btn-outline" style="flex:1;">👁️ متفرج</button></div>
       </div>
-      <div class="mb-16"><div class="section-title">اسمك</div><input type="text" id="playerNameInput" class="input" placeholder="أدخل اسمك..."></div>
-      <div class="mb-16"><div class="section-title">رمز الغرفة</div><input type="text" id="roomIdInput" class="input" placeholder="مثال: ABC123" style="text-transform:uppercase;"></div>
-      <button id="joinRoomBtn" class="btn btn-primary" style="width:100%;">⚡ انضم الآن</button>
+      <div class="mb-16"><div class="section-title">اسمك</div><input type="text" id="directPlayerNameInput" class="input" placeholder="أدخل اسمك..."></div>
+      <div class="mb-16"><div class="section-title">رمز الغرفة</div><input type="text" id="directRoomIdInput" class="input" readonly style="background:rgba(0,212,255,0.1);" placeholder="رمز الغرفة"></div>
+      <button id="directJoinBtn" class="btn btn-primary" style="width:100%;">⚡ انضم الآن</button>
     </div>
   </div>
 </div>
@@ -286,7 +285,7 @@
   <div style="display:grid; grid-template-columns:1fr 320px; gap:20px; padding:20px;">
     <div>
       <div class="card mb-16"><div class="flex gap-16 justify-between"><span id="matchRoundLabel" class="badge badge-gold">الدور —</span><span id="matchVsLabel" class="fw-900">— ضد —</span><span id="matchStatusBadge" class="badge badge-blue">جارية</span></div></div>
-      <div class="card"><div id="matchPlayersBar" class="flex gap-16 mb-16"></div><div id="matchTurnIndicator" class="turn-indicator wait-turn">جاري التحميل...</div><div id="matchXOGrid" class="xo-grid"></div></div>
+      <div class="card"><div id="matchPlayersBar" class="flex gap-16 mb-16"></div><div id="matchStatusIndicator" class="status-indicator">جاري التحميل...</div><div id="matchXOGrid" class="xo-grid"></div></div>
       <div class="card mt-16"><div class="flex gap-16 justify-between"><span class="fw-900 text-gold">📚 سؤال النحو</span><div id="matchTimer" class="timer-ring">30</div></div><div id="matchQuestionText" class="question-text">...</div><div id="matchQuestionOptions" class="question-options"></div></div>
     </div>
     <div><div class="events-feed"><div class="events-header">📡 أحداث المباراة</div><div id="matchEventsList" class="events-list"></div></div>
@@ -328,9 +327,13 @@ const App = {
     document.getElementById(`screen-${name}`).classList.add('active');
   },
   showLanding() { this.showScreen('landing'); },
-  showJoin() { this.showScreen('join'); },
   showLobby() { this.showScreen('lobby'); },
-  showMatch() { this.showScreen('match'); }
+  showMatch() { this.showScreen('match'); },
+  showDirectJoin(roomId) {
+    this.showScreen('direct-join');
+    document.getElementById('directRoomIdInput').value = roomId;
+  },
+  showLandingFromJoin() { this.showScreen('landing'); }
 };
 
 // ------------------- الاتصال -------------------
@@ -390,7 +393,29 @@ function createRoom() {
   });
 }
 
-function joinRoom() {
+// دالة الانضمام المباشر من شاشة direct-join
+function directJoinRoom() {
+  const name = document.getElementById('directPlayerNameInput').value.trim();
+  const roomId = document.getElementById('directRoomIdInput').value.trim().toUpperCase();
+  const isPlayer = document.getElementById('directRolePlayerBtn').classList.contains('btn-primary');
+  const selectedRole = isPlayer ? 'player' : 'spectator';
+  if(!name) { toast('أدخل اسمك', 'error'); return; }
+  if(!roomId) { toast('رمز الغرفة مفقود', 'error'); return; }
+  const player = { id: randomId(8), name: name, role: selectedRole };
+  myPlayer = player;
+  myRole = selectedRole;
+  socket.emit('join-room', { roomId, player }, (resp) => {
+    if(!resp.success) { toast(resp.error, 'error'); return; }
+    currentRoomId = roomId;
+    document.getElementById('lobbyRoomId').innerText = currentRoomId;
+    App.showLobby();
+    if(selectedRole === 'spectator') document.getElementById('hostControls').style.display = 'none';
+    toast(`انضممت إلى الغرفة ${roomId}`, 'success');
+  });
+}
+
+// الانضمام من شاشة الترحيب (اختياري)
+function joinRoomLegacy() {
   const name = document.getElementById('playerNameInput').value.trim();
   let roomId = document.getElementById('roomIdInput').value.trim().toUpperCase();
   const isPlayer = document.getElementById('rolePlayerBtn').classList.contains('btn-primary');
@@ -510,22 +535,21 @@ function updateMatchUI(match) {
   
   const bar = document.getElementById('matchPlayersBar');
   bar.innerHTML = `
-    <div class="xo-player-info x-player ${match.currentTurn === match.player1?.id ? 'active-player' : ''}">
+    <div class="xo-player-info x-player">
       <div class="xo-player-symbol x">X</div>
       <div>${match.player1?.name}</div>
-      ${match.p1HasRight ? '<div class="badge badge-green">✓ حق اللعب</div>' : ''}
+      ${match.p1HasRight ? '<div class="badge badge-green" style="margin-top:4px;">✓ لديه حق اللعب</div>' : '<div class="badge" style="margin-top:4px;">✗ لا حق</div>'}
     </div>
     <div class="vs-divider">VS</div>
-    <div class="xo-player-info o-player ${match.currentTurn === match.player2?.id ? 'active-player' : ''}">
+    <div class="xo-player-info o-player">
       <div class="xo-player-symbol o">O</div>
       <div>${match.player2?.name}</div>
-      ${match.p2HasRight ? '<div class="badge badge-green">✓ حق اللعب</div>' : ''}
+      ${match.p2HasRight ? '<div class="badge badge-green" style="margin-top:4px;">✓ لديه حق اللعب</div>' : '<div class="badge" style="margin-top:4px;">✗ لا حق</div>'}
     </div>
   `;
   
-  const isMyTurn = match.currentTurn === myPlayer?.id;
   const hasRight = (mySymbol === 'X' ? match.p1HasRight : match.p2HasRight);
-  const canPlay = (myRole === 'player' && match.status === 'pending' && isMyTurn && hasRight && !match.winner);
+  const canPlay = (myRole === 'player' && match.status === 'pending' && hasRight && !match.winner);
   
   const grid = document.getElementById('matchXOGrid');
   grid.innerHTML = '';
@@ -545,20 +569,16 @@ function updateMatchUI(match) {
     grid.appendChild(cell);
   }
   
-  const turnEl = document.getElementById('matchTurnIndicator');
+  const statusEl = document.getElementById('matchStatusIndicator');
   if (match.status === 'finished') {
-    turnEl.innerText = match.winner ? `🏆 فاز ${match.winner.name}` : '🤝 تعادل';
-    turnEl.className = 'turn-indicator wait-turn';
-  } else if (isMyTurn && hasRight) {
-    turnEl.innerText = '✅ دورك - ضع علامتك!';
-    turnEl.className = 'turn-indicator your-turn';
-  } else if (isMyTurn && !hasRight) {
-    turnEl.innerText = '❓ أجب على السؤال أولاً';
-    turnEl.className = 'turn-indicator your-turn';
+    statusEl.innerText = match.winner ? `🏆 فاز ${match.winner.name}` : '🤝 تعادل';
+    statusEl.className = 'status-indicator';
+  } else if (hasRight) {
+    statusEl.innerText = '✅ لديك حق اللعب - ضع علامتك الآن!';
+    statusEl.className = 'status-indicator has-right';
   } else {
-    const other = (match.currentTurn === match.player1?.id) ? match.player1 : match.player2;
-    turnEl.innerText = `⏳ انتظر دور ${other?.name || 'الخصم'}...`;
-    turnEl.className = 'turn-indicator wait-turn';
+    statusEl.innerText = '❌ ليس لديك حق اللعب حالياً - أجب على السؤال بشكل صحيح لكسب الحق';
+    statusEl.className = 'status-indicator';
   }
   
   const myQuestion = (mySymbol === 'X' ? match.p1Question : match.p2Question);
@@ -567,7 +587,7 @@ function updateMatchUI(match) {
     document.getElementById('matchQuestionText').innerText = q.q;
     const optsDiv = document.getElementById('matchQuestionOptions');
     optsDiv.innerHTML = '';
-    const canAnswer = (myRole === 'player' && match.status === 'pending' && isMyTurn && !hasRight && !answerLocked);
+    const canAnswer = (myRole === 'player' && match.status === 'pending' && !hasRight && !answerLocked);
     q.opts.forEach((opt, idx) => {
       const btn = document.createElement('button');
       btn.className = 'q-option';
@@ -605,8 +625,8 @@ function submitAnswer(selectedIdx, correctIdx, btn) {
   if(answerLocked) return;
   answerLocked = true;
   const isCorrect = (selectedIdx === correctIdx);
-  if(isCorrect) { btn.classList.add('correct'); toast('✅ إجابة صحيحة!', 'success'); }
-  else { btn.classList.add('wrong'); toast('❌ إجابة خاطئة', 'error'); }
+  if(isCorrect) { btn.classList.add('correct'); toast('✅ إجابة صحيحة! حصلت على حق اللعب', 'success'); }
+  else { btn.classList.add('wrong'); toast('❌ إجابة خاطئة - حاول مرة أخرى', 'error'); }
   socket.emit('answer-submit', { roomId: currentRoomId, matchId: currentMatch.id, correct: isCorrect });
   setTimeout(() => { answerLocked = false; }, 1500);
 }
@@ -625,24 +645,50 @@ document.getElementById('closeResultBtn').onclick = () => document.getElementByI
 
 // ------------------- ربط الأزرار -------------------
 document.getElementById('createTournamentBtn').onclick = () => { connectSocket(); createRoom(); };
-document.getElementById('showJoinBtn').onclick = () => App.showJoin();
-document.getElementById('joinRoomBtn').onclick = () => { if(!socket) connectSocket(); setTimeout(() => { if(socket && socket.connected) joinRoom(); else toast('جاري الاتصال... حاول مرة أخرى', 'error'); }, 500); };
-document.getElementById('copyInviteBtn')?.addEventListener('click', () => { if(currentRoomId) navigator.clipboard.writeText(window.location.origin+'?room='+currentRoomId); toast('تم نسخ الرابط', 'success'); });
+document.getElementById('showJoinBtn').onclick = () => { App.showScreen('join'); };
+document.getElementById('joinRoomBtn')?.addEventListener('click', () => { if(!socket) connectSocket(); setTimeout(() => { if(socket && socket.connected) joinRoomLegacy(); else toast('جاري الاتصال... حاول مرة أخرى', 'error'); }, 500); });
+document.getElementById('directJoinBtn')?.addEventListener('click', () => { if(!socket) connectSocket(); setTimeout(() => { if(socket && socket.connected) directJoinRoom(); else toast('جاري الاتصال... حاول مرة أخرى', 'error'); }, 500); });
+document.getElementById('copyInviteBtn')?.addEventListener('click', () => { if(currentRoomId) navigator.clipboard.writeText(window.location.origin+'/join/'+currentRoomId); toast('تم نسخ الرابط', 'success'); });
 document.getElementById('startTournamentBtn')?.addEventListener('click', () => { socket.emit('start-tournament', currentRoomId); });
 document.getElementById('nextRoundBtn')?.addEventListener('click', () => { socket.emit('next-round', currentRoomId); });
 
+// إعداد أزرار الأدوار في شاشة direct-join
+const directRolePlayerBtn = document.getElementById('directRolePlayerBtn');
+const directRoleSpecBtn = document.getElementById('directRoleSpecBtn');
+if(directRolePlayerBtn && directRoleSpecBtn) {
+  directRolePlayerBtn.onclick = () => { directRolePlayerBtn.classList.add('btn-primary'); directRolePlayerBtn.classList.remove('btn-outline'); directRoleSpecBtn.classList.add('btn-outline'); directRoleSpecBtn.classList.remove('btn-primary'); };
+  directRoleSpecBtn.onclick = () => { directRoleSpecBtn.classList.add('btn-primary'); directRoleSpecBtn.classList.remove('btn-outline'); directRolePlayerBtn.classList.add('btn-outline'); directRolePlayerBtn.classList.remove('btn-primary'); };
+  directRolePlayerBtn.click();
+}
+
+// إعداد أزرار الأدوار في شاشة الانضمام القديمة
 const rolePlayerBtn = document.getElementById('rolePlayerBtn');
 const roleSpecBtn = document.getElementById('roleSpecBtn');
-rolePlayerBtn.onclick = () => { rolePlayerBtn.classList.add('btn-primary'); rolePlayerBtn.classList.remove('btn-outline'); roleSpecBtn.classList.add('btn-outline'); roleSpecBtn.classList.remove('btn-primary'); };
-roleSpecBtn.onclick = () => { roleSpecBtn.classList.add('btn-primary'); roleSpecBtn.classList.remove('btn-outline'); rolePlayerBtn.classList.add('btn-outline'); rolePlayerBtn.classList.remove('btn-primary'); };
-rolePlayerBtn.click();
+if(rolePlayerBtn && roleSpecBtn) {
+  rolePlayerBtn.onclick = () => { rolePlayerBtn.classList.add('btn-primary'); rolePlayerBtn.classList.remove('btn-outline'); roleSpecBtn.classList.add('btn-outline'); roleSpecBtn.classList.remove('btn-primary'); };
+  roleSpecBtn.onclick = () => { roleSpecBtn.classList.add('btn-primary'); roleSpecBtn.classList.remove('btn-outline'); rolePlayerBtn.classList.add('btn-outline'); rolePlayerBtn.classList.remove('btn-primary'); };
+  rolePlayerBtn.click();
+}
 
+// الصوت (placeholder)
 document.querySelectorAll('#soundToggleBtn, #soundToggleBtn2, #soundToggleBtn3').forEach(btn => btn.onclick = () => toast('تفعيل الصوت قريباً', 'info'));
 
+// معالجة الرابط المباشر /join/ROOM_ID
 window.onload = () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const room = urlParams.get('room');
-  if(room) document.getElementById('roomIdInput').value = room;
+  const path = window.location.pathname;
+  const match = path.match(/\/join\/([A-Za-z0-9]+)/i);
+  if (match && match[1]) {
+    const roomId = match[1].toUpperCase();
+    connectSocket();
+    setTimeout(() => {
+      App.showDirectJoin(roomId);
+    }, 500);
+  } else {
+    // الصفحة الرئيسية عادية
+    const urlParams = new URLSearchParams(window.location.search);
+    const room = urlParams.get('room');
+    if(room) document.getElementById('roomIdInput').value = room;
+  }
 };
 </script>
 </body>
