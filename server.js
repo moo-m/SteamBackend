@@ -7,26 +7,18 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// ------------------- معالجة المسارات (SPA) -------------------
-// يجب أن تأتي قبل static middleware
+// معالجة المسارات لصفحة واحدة
 app.get('/join/:roomId', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
-
 app.get('*', (req, res) => {
-  // إذا لم يكن طلباً لملف ثابت (مثل .css, .js, .html) وليس socket.io
   if (!req.path.startsWith('/socket.io') && !req.path.includes('.')) {
     res.sendFile(path.join(__dirname, 'index.html'));
-  } else {
-    // دع express.static يتعامل مع بقية الملفات
-    return;
   }
 });
-
-// خدمة الملفات الثابتة
 app.use(express.static(path.join(__dirname)));
 
-// ------------------- باقي الخادم (نفس الكود السابق) -------------------
+// ------------------- قاعدة الأسئلة -------------------
 const QUESTIONS = [
   { q: "ما نوع الفعل: قَالَ؟", opts: ["صحيح سالم","معتل أجوف","معتل ناقص","صحيح مهموز"], ans: 1 },
   { q: "ما نوع الفعل: رَمَى؟", opts: ["معتل مثال","معتل أجوف","معتل ناقص","صحيح مضعف"], ans: 2 },
@@ -65,35 +57,11 @@ const QUESTIONS = [
   { q: "ما إعراب (في) في: جلستُ في البيتِ؟", opts: ["فعل","اسم","حرف جر","أداة نصب"], ans: 2 },
 ];
 
-function randomId(len = 6) {
-  return Math.random().toString(36).substring(2, 2 + len).toUpperCase();
-}
-
-function getRandomQuestion() {
-  return JSON.parse(JSON.stringify(QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)]));
-}
-
-function shuffleArray(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function checkWin(board) {
-  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  for (const [a,b,c] of lines) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c])
-      return { winner: board[a], cells: [a,b,c] };
-  }
-  return null;
-}
-
-function isBoardFull(board) {
-  return board.every(cell => cell !== null);
-}
+function randomId(len = 6) { return Math.random().toString(36).substring(2, 2 + len).toUpperCase(); }
+function getRandomQuestion() { return JSON.parse(JSON.stringify(QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)])); }
+function shuffleArray(arr) { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function checkWin(board) { const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]; for (const [a,b,c] of lines) { if (board[a] && board[a] === board[b] && board[a] === board[c]) return { winner: board[a], cells: [a,b,c] }; } return null; }
+function isBoardFull(board) { return board.every(cell => cell !== null); }
 
 function buildRound(players) {
   const matches = [];
@@ -129,13 +97,7 @@ function startTournament(roomId) {
   if (!room) return false;
   const players = room.players.filter(p => p.role === 'player');
   if (players.length < 2) return false;
-  room.tournament = {
-    players: players,
-    rounds: [],
-    currentRound: 0,
-    status: 'active',
-    winner: null,
-  };
+  room.tournament = { players, rounds: [], currentRound: 0, status: 'active', winner: null };
   room.tournament.rounds.push({ matches: buildRound(players), roundNum: 1 });
   return true;
 }
@@ -146,11 +108,7 @@ function nextRound(roomId) {
   const currentRound = room.tournament.rounds[room.tournament.currentRound];
   if (!currentRound.matches.every(m => m.status === 'finished')) return false;
   const winners = currentRound.matches.map(m => m.winner).filter(w => w);
-  if (winners.length === 1) {
-    room.tournament.winner = winners[0];
-    room.tournament.status = 'finished';
-    return true;
-  }
+  if (winners.length === 1) { room.tournament.winner = winners[0]; room.tournament.status = 'finished'; return true; }
   room.tournament.currentRound++;
   room.tournament.rounds.push({ matches: buildRound(winners), roundNum: room.tournament.currentRound + 1 });
   return true;
@@ -176,29 +134,20 @@ function handleCellClick(roomId, matchId, cellIndex, playerId) {
   const round = room.tournament.rounds[room.tournament.currentRound];
   const match = round.matches.find(m => m.id === matchId);
   if (!match || match.status !== 'pending') return false;
-  
   const isP1 = match.player1?.id === playerId;
   const isP2 = match.player2?.id === playerId;
   if (!isP1 && !isP2) return false;
-  
   const symbol = isP1 ? 'X' : 'O';
   const hasRight = isP1 ? match.p1HasRight : match.p2HasRight;
   if (!hasRight) return false;
   if (match.board[cellIndex] !== null) return false;
-
   match.board[cellIndex] = symbol;
   if (isP1) match.p1HasRight = false;
   else match.p2HasRight = false;
-  
   match.events.push(`${isP1 ? match.player1.name : match.player2.name} وضع ${symbol} في الخانة ${cellIndex+1}`);
-
   const win = checkWin(match.board);
-  if (win) {
-    match.winner = isP1 ? match.player1 : match.player2;
-    match.status = 'finished';
-    match.winCells = win.cells;
-    match.events.push(`🏆 فاز ${match.winner.name}!`);
-  } else if (isBoardFull(match.board)) {
+  if (win) { match.winner = isP1 ? match.player1 : match.player2; match.status = 'finished'; match.winCells = win.cells; match.events.push(`🏆 فاز ${match.winner.name}!`); }
+  else if (isBoardFull(match.board)) {
     match.drawCount++;
     match.board = Array(9).fill(null);
     match.p1HasRight = false;
@@ -217,21 +166,12 @@ function handleAnswer(roomId, matchId, playerId, correct) {
   const round = room.tournament.rounds[room.tournament.currentRound];
   const match = round.matches.find(m => m.id === matchId);
   if (!match || match.status !== 'pending') return false;
-  
   const isP1 = match.player1?.id === playerId;
   const isP2 = match.player2?.id === playerId;
   if (!isP1 && !isP2) return false;
-
   if (correct) {
-    if (isP1) {
-      match.p1HasRight = true;
-      match.p1Correct++;
-      match.p1Question = getRandomQuestion();
-    } else {
-      match.p2HasRight = true;
-      match.p2Correct++;
-      match.p2Question = getRandomQuestion();
-    }
+    if (isP1) { match.p1HasRight = true; match.p1Correct++; match.p1Question = getRandomQuestion(); }
+    else { match.p2HasRight = true; match.p2Correct++; match.p2Question = getRandomQuestion(); }
     match.events.push(`✅ ${isP1 ? match.player1.name : match.player2.name} أجاب صحيحاً ← حصل على حق اللعب`);
   } else {
     if (isP1) match.p1HasRight = false;
@@ -244,8 +184,6 @@ function handleAnswer(roomId, matchId, playerId, correct) {
 }
 
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
   socket.on('create-room', (player, callback) => {
     const roomId = randomId(6);
     rooms.set(roomId, { hostId: socket.id, players: [player], tournament: null });
@@ -253,12 +191,8 @@ io.on('connection', (socket) => {
     callback({ roomId, isHost: true });
     io.to(roomId).emit('room-update', { tournament: null, players: [player] });
   });
-
   socket.on('join-room', ({ roomId, player }, callback) => {
-    if (!rooms.has(roomId)) {
-      callback({ success: false, error: 'الغرفة غير موجودة' });
-      return;
-    }
+    if (!rooms.has(roomId)) { callback({ success: false, error: 'الغرفة غير موجودة' }); return; }
     const room = rooms.get(roomId);
     if (room.players.find(p => p.name === player.name)) player.name += `_${randomId(3)}`;
     room.players.push(player);
@@ -267,41 +201,11 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('room-update', { tournament: room.tournament, players: room.players });
     io.to(roomId).emit('player-joined', player);
   });
-
-  socket.on('start-tournament', (roomId) => {
-    const room = rooms.get(roomId);
-    if (room && room.hostId === socket.id && startTournament(roomId)) {
-      io.to(roomId).emit('tournament-started', room.tournament);
-    }
-  });
-
-  socket.on('next-round', (roomId) => {
-    const room = rooms.get(roomId);
-    if (room && room.hostId === socket.id && nextRound(roomId)) {
-      io.to(roomId).emit('tournament-update', room.tournament);
-    }
-  });
-
-  socket.on('qualify-player', ({ roomId, matchId, playerId }) => {
-    const room = rooms.get(roomId);
-    if (room && room.hostId === socket.id && qualifyPlayer(roomId, matchId, playerId)) {
-      io.to(roomId).emit('tournament-update', room.tournament);
-    }
-  });
-
-  socket.on('cell-click', ({ roomId, matchId, cellIndex }) => {
-    if (handleCellClick(roomId, matchId, cellIndex, socket.id)) {
-      const room = rooms.get(roomId);
-      if (room && room.tournament) io.to(roomId).emit('tournament-update', room.tournament);
-    }
-  });
-
-  socket.on('answer-submit', ({ roomId, matchId, correct }) => {
-    if (handleAnswer(roomId, matchId, socket.id, correct)) {
-      const room = rooms.get(roomId);
-      if (room && room.tournament) io.to(roomId).emit('tournament-update', room.tournament);
-    }
-  });
+  socket.on('start-tournament', (roomId) => { const room = rooms.get(roomId); if (room && room.hostId === socket.id && startTournament(roomId)) io.to(roomId).emit('tournament-started', room.tournament); });
+  socket.on('next-round', (roomId) => { const room = rooms.get(roomId); if (room && room.hostId === socket.id && nextRound(roomId)) io.to(roomId).emit('tournament-update', room.tournament); });
+  socket.on('qualify-player', ({ roomId, matchId, playerId }) => { const room = rooms.get(roomId); if (room && room.hostId === socket.id && qualifyPlayer(roomId, matchId, playerId)) io.to(roomId).emit('tournament-update', room.tournament); });
+  socket.on('cell-click', ({ roomId, matchId, cellIndex }) => { if (handleCellClick(roomId, matchId, cellIndex, socket.id)) { const room = rooms.get(roomId); if (room && room.tournament) io.to(roomId).emit('tournament-update', room.tournament); } });
+  socket.on('answer-submit', ({ roomId, matchId, correct }) => { if (handleAnswer(roomId, matchId, socket.id, correct)) { const room = rooms.get(roomId); if (room && room.tournament) io.to(roomId).emit('tournament-update', room.tournament); } });
 });
 
 const PORT = process.env.PORT || 3000;
