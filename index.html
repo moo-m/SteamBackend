@@ -283,7 +283,6 @@ function toast(msg, type='info') {
   setTimeout(() => { el.style.animation = 'toastOut 0.3s forwards'; setTimeout(()=>el.remove(),300); }, 3000);
 }
 function randomId(len=6) { return Math.random().toString(36).substring(2,2+len).toUpperCase(); }
-function playSound(type) { /* اختياري: يمكن تفعيل الصوت لاحقاً */ }
 function launchConfetti(count=50) { for(let i=0;i<count;i++) { const c=document.createElement('div'); c.className='confetti-particle'; c.style.cssText=`left:${Math.random()*100}vw; background:hsl(${Math.random()*360},100%,50%); animation-duration:${1+Math.random()*2}s;`; document.body.appendChild(c); setTimeout(()=>c.remove(),3000); } }
 
 // ------------------- عرض الشاشات -------------------
@@ -302,9 +301,43 @@ const App = {
 function connectSocket() {
   socket = io();
   socket.on('connect', () => console.log('Socket connected'));
-  socket.on('room-update', (data) => { currentTournament = data.tournament; renderLobbyPlayers(data.players); renderBracket(); updateActiveMatches(); });
-  socket.on('tournament-started', (tournament) => { currentTournament = tournament; renderBracket(); updateActiveMatches(); toast('🚀 بدأت البطولة!', 'success'); if(myRole==='player') checkMyMatch(); });
-  socket.on('tournament-update', (tournament) => { currentTournament = tournament; renderBracket(); updateActiveMatches(); if(myRole==='player') checkMyMatch(); else if(currentMatch) updateMatchUI(currentMatch); });
+  socket.on('room-update', (data) => {
+    console.log('room-update', data);
+    currentTournament = data.tournament;
+    renderLobbyPlayers(data.players);
+    renderBracket();
+    updateActiveMatches();
+  });
+  socket.on('tournament-started', (tournament) => {
+    currentTournament = tournament;
+    renderBracket();
+    updateActiveMatches();
+    toast('🚀 بدأت البطولة!', 'success');
+    if(myRole==='player') checkMyMatch();
+  });
+  socket.on('tournament-update', (tournament) => {
+    currentTournament = tournament;
+    renderBracket();
+    updateActiveMatches();
+    if (myRole === 'player') {
+      if (currentMatch) {
+        const round = tournament.rounds[tournament.currentRound];
+        const updatedMatch = round?.matches.find(m => m.id === currentMatch.id);
+        if (updatedMatch) {
+          currentMatch = updatedMatch;
+          updateMatchUI(currentMatch);
+        } else {
+          checkMyMatch();
+        }
+      } else {
+        checkMyMatch();
+      }
+    } else if (currentMatch) {
+      const round = tournament.rounds[tournament.currentRound];
+      const updatedMatch = round?.matches.find(m => m.id === currentMatch.id);
+      if (updatedMatch) updateMatchUI(updatedMatch);
+    }
+  });
   socket.on('player-joined', (player) => { toast(`${player.name} انضم${player.role==='spectator'?' كمتفرج':''}`, 'info'); });
   socket.on('error', (msg) => toast(msg, 'error'));
 }
@@ -320,7 +353,6 @@ function createRoom() {
     App.showLobby();
     document.getElementById('hostControls').style.display = 'block';
     toast(`تم إنشاء الغرفة: ${currentRoomId}`, 'success');
-    // لا نضيف المشرف كلاعب نهائياً
   });
 }
 
@@ -330,30 +362,17 @@ function joinRoom() {
   let roomId = document.getElementById('roomIdInput').value.trim().toUpperCase();
   const isPlayer = document.getElementById('rolePlayerBtn').classList.contains('btn-primary');
   const selectedRole = isPlayer ? 'player' : 'spectator';
-  
-  if (!name) { toast('أدخل اسمك', 'error'); return; }
-  if (!roomId) { toast('أدخل رمز الغرفة', 'error'); return; }
-  
-  if (!socket || !socket.connected) {
-    toast('جاري الاتصال بالخادم... حاول مرة أخرى', 'info');
-    connectSocket();
-    setTimeout(() => joinRoom(), 1000);
-    return;
-  }
-  
+  if(!name) { toast('أدخل اسمك', 'error'); return; }
+  if(!roomId) { toast('أدخل رمز الغرفة', 'error'); return; }
   const player = { id: randomId(8), name: name, role: selectedRole };
   myPlayer = player;
   myRole = selectedRole;
-  
   socket.emit('join-room', { roomId, player }, (resp) => {
-    if (!resp || !resp.success) {
-      toast(resp?.error || 'حدث خطأ', 'error');
-      return;
-    }
+    if(!resp.success) { toast(resp.error, 'error'); return; }
     currentRoomId = roomId;
     document.getElementById('lobbyRoomId').innerText = currentRoomId;
     App.showLobby();
-    if (selectedRole === 'spectator') document.getElementById('hostControls').style.display = 'none';
+    if(selectedRole === 'spectator') document.getElementById('hostControls').style.display = 'none';
     toast(`انضممت إلى الغرفة ${roomId}`, 'success');
   });
 }
@@ -361,11 +380,10 @@ function joinRoom() {
 // ------------------- عرض اللاعبين في اللوبي -------------------
 function renderLobbyPlayers(players) {
   const container = document.getElementById('lobbyPlayersGrid');
-  // تصفية المستخدمين الذين دورهم 'player' فقط (استبعاد host والـ spectators إن أردت)
   const realPlayers = players.filter(p => p.role === 'player');
-  if(!realPlayers || realPlayers.length===0) { 
-    container.innerHTML = '<div class="text-dim">لا يوجد لاعبون بعد...</div>'; 
-    return; 
+  if(!realPlayers.length) {
+    container.innerHTML = '<div class="text-dim">⏳ انتظار انضمام لاعبين...</div>';
+    return;
   }
   container.innerHTML = realPlayers.map(p => `
     <div class="player-card">
@@ -405,9 +423,7 @@ function renderBracket() {
   }
 }
 
-// ------------------- فتح نافذة مشاهدة المباراة للمشرف -------------------
 function openMatchViewer(match) {
-  // نافذة منبثقة مبسطة - يمكن تحسينها لاحقاً
   alert(`مباراة: ${match.player1?.name} ضد ${match.player2?.name}\nالحالة: ${match.status}`);
 }
 
@@ -446,64 +462,101 @@ function checkMyMatch() {
 
 // ------------------- تحديث واجهة المباراة -------------------
 function updateMatchUI(match) {
-  if(!match) return;
+  if (!match) return;
+  
   document.getElementById('matchVsLabel').innerText = `${match.player1?.name} ضد ${match.player2?.name}`;
-  document.getElementById('matchRoundLabel').innerText = `الدور ${currentTournament.currentRound+1}`;
-  // عرض اللاعبين
+  document.getElementById('matchRoundLabel').innerText = `الدور ${(currentTournament?.currentRound || 0) + 1}`;
+  
   const bar = document.getElementById('matchPlayersBar');
   bar.innerHTML = `
-    <div class="xo-player-info x-player ${match.currentTurn===match.player1?.id?'active-player':''}"><div class="xo-player-symbol x">X</div><div>${match.player1?.name}</div>${match.p1HasRight?'<div class="badge badge-green">✓ حق اللعب</div>':''}</div>
+    <div class="xo-player-info x-player ${match.currentTurn === match.player1?.id ? 'active-player' : ''}">
+      <div class="xo-player-symbol x">X</div>
+      <div>${match.player1?.name}</div>
+      ${match.p1HasRight ? '<div class="badge badge-green">✓ حق اللعب</div>' : ''}
+    </div>
     <div class="vs-divider">VS</div>
-    <div class="xo-player-info o-player ${match.currentTurn===match.player2?.id?'active-player':''}"><div class="xo-player-symbol o">O</div><div>${match.player2?.name}</div>${match.p2HasRight?'<div class="badge badge-green">✓ حق اللعب</div>':''}</div>
+    <div class="xo-player-info o-player ${match.currentTurn === match.player2?.id ? 'active-player' : ''}">
+      <div class="xo-player-symbol o">O</div>
+      <div>${match.player2?.name}</div>
+      ${match.p2HasRight ? '<div class="badge badge-green">✓ حق اللعب</div>' : ''}
+    </div>
   `;
-  // لوحة XO
-  const grid = document.getElementById('matchXOGrid');
-  grid.innerHTML = '';
-  const isMyTurn = match.currentTurn === myPlayer.id;
+  
+  const isMyTurn = match.currentTurn === myPlayer?.id;
   const hasRight = (mySymbol === 'X' ? match.p1HasRight : match.p2HasRight);
   const canPlay = (myRole === 'player' && match.status === 'pending' && isMyTurn && hasRight && !match.winner);
-  for(let i=0;i<9;i++) {
-    const cell = document.createElement('div'); cell.className = 'xo-cell';
-    if(match.board[i]) { cell.classList.add('taken', match.board[i]==='X'?'x-mark':'o-mark'); cell.innerHTML = `<span class="mark-${match.board[i]==='X'?'x':'o'}">${match.board[i]}</span>`; }
-    else if(canPlay) { cell.style.cursor = 'pointer'; cell.onclick = () => sendCellClick(i); }
-    else cell.classList.add('disabled');
-    if(match.winCells && match.winCells.includes(i)) cell.classList.add('winning');
+  
+  const grid = document.getElementById('matchXOGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'xo-cell';
+    if (match.board[i]) {
+      cell.classList.add('taken', match.board[i] === 'X' ? 'x-mark' : 'o-mark');
+      cell.innerHTML = `<span class="mark-${match.board[i] === 'X' ? 'x' : 'o'}">${match.board[i]}</span>`;
+    } else if (canPlay) {
+      cell.style.cursor = 'pointer';
+      cell.onclick = (function(idx) { return function() { sendCellClick(idx); }; })(i);
+    } else {
+      cell.classList.add('disabled');
+    }
+    if (match.winCells && match.winCells.includes(i)) cell.classList.add('winning');
     grid.appendChild(cell);
   }
-  // مؤشر الدور
+  
   const turnEl = document.getElementById('matchTurnIndicator');
-  if(match.status === 'finished') turnEl.innerText = match.winner ? `🏆 فاز ${match.winner.name}` : '🤝 تعادل';
-  else if(isMyTurn && hasRight) turnEl.innerText = '✅ دورك - ضع علامتك!';
-  else if(isMyTurn && !hasRight) turnEl.innerText = '❓ أجب على السؤال أولاً';
-  else turnEl.innerText = `⏳ انتظر دور ${match.currentTurn === match.player1?.id ? match.player1.name : match.player2.name}`;
-  // السؤال
+  if (match.status === 'finished') {
+    turnEl.innerText = match.winner ? `🏆 فاز ${match.winner.name}` : '🤝 تعادل';
+    turnEl.className = 'turn-indicator wait-turn';
+  } else if (isMyTurn && hasRight) {
+    turnEl.innerText = '✅ دورك - ضع علامتك!';
+    turnEl.className = 'turn-indicator your-turn';
+  } else if (isMyTurn && !hasRight) {
+    turnEl.innerText = '❓ أجب على السؤال أولاً';
+    turnEl.className = 'turn-indicator your-turn';
+  } else {
+    const other = (match.currentTurn === match.player1?.id) ? match.player1 : match.player2;
+    turnEl.innerText = `⏳ انتظر دور ${other?.name || 'الخصم'}...`;
+    turnEl.className = 'turn-indicator wait-turn';
+  }
+  
   const myQuestion = (mySymbol === 'X' ? match.p1Question : match.p2Question);
   const q = myQuestion || match.question;
-  if(q) {
+  if (q) {
     document.getElementById('matchQuestionText').innerText = q.q;
     const optsDiv = document.getElementById('matchQuestionOptions');
     optsDiv.innerHTML = '';
     const canAnswer = (myRole === 'player' && match.status === 'pending' && isMyTurn && !hasRight && !answerLocked);
     q.opts.forEach((opt, idx) => {
-      const btn = document.createElement('button'); btn.className = 'q-option'; btn.innerText = `${String.fromCharCode(1575+idx)}) ${opt}`;
-      if(canAnswer) btn.onclick = () => submitAnswer(idx, q.ans, btn);
-      else btn.disabled = true;
+      const btn = document.createElement('button');
+      btn.className = 'q-option';
+      btn.innerText = `${String.fromCharCode(1575 + idx)}) ${opt}`;
+      if (canAnswer) {
+        btn.onclick = () => submitAnswer(idx, q.ans, btn);
+      } else {
+        btn.disabled = true;
+      }
       optsDiv.appendChild(btn);
     });
   }
-  // الإحصائيات
+  
   document.getElementById('matchXScore').innerText = match.p1Correct || 0;
   document.getElementById('matchOScore').innerText = match.p2Correct || 0;
-  // الأحداث
+  
   const evList = document.getElementById('matchEventsList');
-  if(match.events && match.events.length) evList.innerHTML = match.events.slice().reverse().map(e=>`<div class="event-item event-info">${e}</div>`).join('');
-  // النتيجة
-  if(match.status === 'finished' && myRole !== 'spectator') {
-    setTimeout(() => showResult(match.winner?.name === myPlayer.name, match.winner === null, match.winner?.name), 500);
+  if (match.events && match.events.length) {
+    evList.innerHTML = match.events.slice().reverse().map(e => `<div class="event-item event-info">${e}</div>`).join('');
+  }
+  
+  if (match.status === 'finished' && myRole !== 'spectator') {
+    setTimeout(() => {
+      showResult(match.winner?.name === myPlayer?.name, !match.winner, match.winner?.name);
+    }, 500);
   }
 }
 
 function sendCellClick(cellIndex) {
+  if (!socket || !currentMatch) return;
   socket.emit('cell-click', { roomId: currentRoomId, matchId: currentMatch.id, cellIndex });
 }
 
@@ -511,8 +564,8 @@ function submitAnswer(selectedIdx, correctIdx, btn) {
   if(answerLocked) return;
   answerLocked = true;
   const isCorrect = (selectedIdx === correctIdx);
-  if(isCorrect) { btn.classList.add('correct'); toast('✅ إجابة صحيحة!', 'success'); playSound('correct'); }
-  else { btn.classList.add('wrong'); toast('❌ إجابة خاطئة', 'error'); playSound('wrong'); }
+  if(isCorrect) { btn.classList.add('correct'); toast('✅ إجابة صحيحة!', 'success'); }
+  else { btn.classList.add('wrong'); toast('❌ إجابة خاطئة', 'error'); }
   socket.emit('answer-submit', { roomId: currentRoomId, matchId: currentMatch.id, correct: isCorrect });
   setTimeout(() => { answerLocked = false; }, 1500);
 }
@@ -532,22 +585,19 @@ document.getElementById('closeResultBtn').onclick = () => document.getElementByI
 // ------------------- أزرار الواجهة -------------------
 document.getElementById('createTournamentBtn').onclick = () => { connectSocket(); createRoom(); };
 document.getElementById('showJoinBtn').onclick = () => App.showJoin();
-document.getElementById('joinRoomBtn').onclick = () => { connectSocket(); joinRoom(); };
+document.getElementById('joinRoomBtn').onclick = () => { if(!socket) connectSocket(); setTimeout(() => { if(socket && socket.connected) joinRoom(); else toast('جاري الاتصال... حاول مرة أخرى', 'error'); }, 500); };
 document.getElementById('copyInviteBtn')?.addEventListener('click', () => { if(currentRoomId) navigator.clipboard.writeText(window.location.origin+'?room='+currentRoomId); toast('تم نسخ الرابط', 'success'); });
 document.getElementById('startTournamentBtn')?.addEventListener('click', () => { socket.emit('start-tournament', currentRoomId); });
 document.getElementById('nextRoundBtn')?.addEventListener('click', () => { socket.emit('next-round', currentRoomId); });
 
-// تفعيل دور اللاعب/متفرج
 const rolePlayerBtn = document.getElementById('rolePlayerBtn');
 const roleSpecBtn = document.getElementById('roleSpecBtn');
 rolePlayerBtn.onclick = () => { rolePlayerBtn.classList.add('btn-primary'); rolePlayerBtn.classList.remove('btn-outline'); roleSpecBtn.classList.add('btn-outline'); roleSpecBtn.classList.remove('btn-primary'); };
 roleSpecBtn.onclick = () => { roleSpecBtn.classList.add('btn-primary'); roleSpecBtn.classList.remove('btn-outline'); rolePlayerBtn.classList.add('btn-outline'); rolePlayerBtn.classList.remove('btn-primary'); };
-rolePlayerBtn.click(); // default
+rolePlayerBtn.click();
 
-// تحسين الصوت (placeholder)
 document.querySelectorAll('#soundToggleBtn, #soundToggleBtn2, #soundToggleBtn3').forEach(btn => btn.onclick = () => toast('تفعيل الصوت قريباً', 'info'));
 
-// إظهار رمز الغرفة من رابط إن وجد
 window.onload = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const room = urlParams.get('room');
