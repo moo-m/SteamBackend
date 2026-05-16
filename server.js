@@ -161,9 +161,11 @@ function handleCellClick(roomId, matchId, cellIndex, playerId) {
   const round = room.tournament.rounds[room.tournament.currentRound];
   const match = round.matches.find(m => m.id === matchId);
   if (!match || match.status !== 'pending') return false;
+  
   const isP1 = match.player1?.id === playerId;
   const isP2 = match.player2?.id === playerId;
   if (!isP1 && !isP2) return false;
+  
   const symbol = isP1 ? 'X' : 'O';
   const hasRight = isP1 ? match.p1HasRight : match.p2HasRight;
   if (!hasRight) return false;
@@ -202,13 +204,21 @@ function handleAnswer(roomId, matchId, playerId, correct) {
   const round = room.tournament.rounds[room.tournament.currentRound];
   const match = round.matches.find(m => m.id === matchId);
   if (!match || match.status !== 'pending') return false;
+  
   const isP1 = match.player1?.id === playerId;
   const isP2 = match.player2?.id === playerId;
   if (!isP1 && !isP2) return false;
 
   if (correct) {
-    if (isP1) { match.p1HasRight = true; match.p1Correct++; match.p1Question = getRandomQuestion(); }
-    else { match.p2HasRight = true; match.p2Correct++; match.p2Question = getRandomQuestion(); }
+    if (isP1) {
+      match.p1HasRight = true;
+      match.p1Correct++;
+      match.p1Question = getRandomQuestion();
+    } else {
+      match.p2HasRight = true;
+      match.p2Correct++;
+      match.p2Question = getRandomQuestion();
+    }
     match.events.push(`✅ ${isP1 ? match.player1.name : match.player2.name} أجاب صحيحاً`);
   } else {
     if (isP1) match.p1HasRight = false;
@@ -238,40 +248,48 @@ io.on('connection', (socket) => {
       return;
     }
     const room = rooms.get(roomId);
+    // تجنب الاسم المكرر
     if (room.players.find(p => p.name === player.name)) player.name += `_${randomId(3)}`;
     room.players.push(player);
     socket.join(roomId);
     callback({ success: true, isHost: false });
-    io.to(roomId).emit('player-joined', player);
     io.to(roomId).emit('room-update', { tournament: room.tournament, players: room.players });
+    io.to(roomId).emit('player-joined', player);
   });
 
   socket.on('start-tournament', (roomId) => {
     const room = rooms.get(roomId);
-    if (room && room.hostId === socket.id && startTournament(roomId))
+    if (room && room.hostId === socket.id && startTournament(roomId)) {
       io.to(roomId).emit('tournament-started', room.tournament);
+    }
   });
 
   socket.on('next-round', (roomId) => {
     const room = rooms.get(roomId);
-    if (room && room.hostId === socket.id && nextRound(roomId))
+    if (room && room.hostId === socket.id && nextRound(roomId)) {
       io.to(roomId).emit('tournament-update', room.tournament);
+    }
   });
 
   socket.on('qualify-player', ({ roomId, matchId, playerId }) => {
     const room = rooms.get(roomId);
-    if (room && room.hostId === socket.id && qualifyPlayer(roomId, matchId, playerId))
+    if (room && room.hostId === socket.id && qualifyPlayer(roomId, matchId, playerId)) {
       io.to(roomId).emit('tournament-update', room.tournament);
+    }
   });
 
   socket.on('cell-click', ({ roomId, matchId, cellIndex }) => {
-    if (handleCellClick(roomId, matchId, cellIndex, socket.id))
-      io.to(roomId).emit('tournament-update', rooms.get(roomId).tournament);
+    if (handleCellClick(roomId, matchId, cellIndex, socket.id)) {
+      const room = rooms.get(roomId);
+      if (room && room.tournament) io.to(roomId).emit('tournament-update', room.tournament);
+    }
   });
 
   socket.on('answer-submit', ({ roomId, matchId, correct }) => {
-    if (handleAnswer(roomId, matchId, socket.id, correct))
-      io.to(roomId).emit('tournament-update', rooms.get(roomId).tournament);
+    if (handleAnswer(roomId, matchId, socket.id, correct)) {
+      const room = rooms.get(roomId);
+      if (room && room.tournament) io.to(roomId).emit('tournament-update', room.tournament);
+    }
   });
 });
 
