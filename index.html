@@ -329,20 +329,32 @@ async function createRoom() {
 function joinRoom() {
   const name = document.getElementById('playerNameInput').value.trim();
   let roomId = document.getElementById('roomIdInput').value.trim().toUpperCase();
-  const role = document.querySelector('#rolePlayerBtn.classList.contains("btn-primary") ? "player" : "spectator"'); // handled below
   const isPlayer = document.getElementById('rolePlayerBtn').classList.contains('btn-primary');
   const selectedRole = isPlayer ? 'player' : 'spectator';
-  if(!name) { toast('أدخل اسمك', 'error'); return; }
-  if(!roomId) { toast('أدخل رمز الغرفة', 'error'); return; }
+  
+  if (!name) { toast('أدخل اسمك', 'error'); return; }
+  if (!roomId) { toast('أدخل رمز الغرفة', 'error'); return; }
+  
+  if (!socket || !socket.connected) {
+    toast('جاري الاتصال بالخادم... حاول مرة أخرى', 'info');
+    connectSocket();
+    setTimeout(() => joinRoom(), 1000);
+    return;
+  }
+  
   const player = { id: randomId(8), name: name, role: selectedRole };
   myPlayer = player;
   myRole = selectedRole;
+  
   socket.emit('join-room', { roomId, player }, (resp) => {
-    if(!resp.success) { toast(resp.error, 'error'); return; }
+    if (!resp || !resp.success) {
+      toast(resp?.error || 'حدث خطأ', 'error');
+      return;
+    }
     currentRoomId = roomId;
     document.getElementById('lobbyRoomId').innerText = currentRoomId;
     App.showLobby();
-    if(selectedRole === 'spectator') document.getElementById('hostControls').style.display = 'none';
+    if (selectedRole === 'spectator') document.getElementById('hostControls').style.display = 'none';
     toast(`انضممت إلى الغرفة ${roomId}`, 'success');
   });
 }
