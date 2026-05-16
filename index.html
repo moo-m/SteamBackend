@@ -311,25 +311,16 @@ function connectSocket() {
 
 // ------------------- إنشاء غرفة -------------------
 function createRoom() {
-  const hostId = randomId(8);
-  const hostPlayer = { id: hostId, name: 'المشرف', role: 'host' };
-  myPlayer = hostPlayer;
+  const player = { id: randomId(8), name: 'المشرف', role: 'host' };
+  myPlayer = player;
   myRole = 'host';
-  
-  socket.emit('create-room', hostPlayer, (resp) => {
+  socket.emit('create-room', player, (resp) => {
     currentRoomId = resp.roomId;
     document.getElementById('lobbyRoomId').innerText = currentRoomId;
     App.showLobby();
     document.getElementById('hostControls').style.display = 'block';
     toast(`تم إنشاء الغرفة: ${currentRoomId}`, 'success');
-    
-    // الآن انضم كلاعب حقيقي بنفس المعرف ولكن بدور 'player'
-    const playerCopy = { id: hostId, name: 'المشرف', role: 'player' };
-    socket.emit('join-room', { roomId: currentRoomId, player: playerCopy }, (joinResp) => {
-      if (joinResp && joinResp.success) {
-        console.log('المشرف انضم كلاعب أيضاً');
-      }
-    });
+    // لا نضيف المشرف كلاعب نهائياً
   });
 }
 
@@ -370,10 +361,15 @@ function joinRoom() {
 // ------------------- عرض اللاعبين في اللوبي -------------------
 function renderLobbyPlayers(players) {
   const container = document.getElementById('lobbyPlayersGrid');
-  if(!players || players.length===0) { container.innerHTML = '<div class="text-dim">لا يوجد لاعبون بعد...</div>'; return; }
-  container.innerHTML = players.map(p => `
+  // تصفية المستخدمين الذين دورهم 'player' فقط (استبعاد host والـ spectators إن أردت)
+  const realPlayers = players.filter(p => p.role === 'player');
+  if(!realPlayers || realPlayers.length===0) { 
+    container.innerHTML = '<div class="text-dim">لا يوجد لاعبون بعد...</div>'; 
+    return; 
+  }
+  container.innerHTML = realPlayers.map(p => `
     <div class="player-card">
-      <div class="flex gap-8"><div class="player-avatar">${p.name[0]}</div><div><div>${p.name}</div><div class="badge ${p.role==='spectator'?'badge-blue':'badge-green'}">${p.role==='spectator'?'👁️ متفرج':'🎮 لاعب'}</div></div></div>
+      <div class="flex gap-8"><div class="player-avatar">${p.name[0]}</div><div><div>${p.name}</div><div class="badge badge-green">🎮 لاعب</div></div></div>
     </div>
   `).join('');
   const specCount = players.filter(p=>p.role==='spectator').length;
